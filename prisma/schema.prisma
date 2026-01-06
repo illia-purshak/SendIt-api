@@ -12,3 +12,101 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+  BANNED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  COURIER
+  CLIENT
+}
+
+enum UserType {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+model User {
+  id Int @id @default(autoincrement())
+
+  email       String? @unique
+  phoneNumber String? @unique
+
+  role   UserRole   @default(CLIENT)
+  status UserStatus @default(INACTIVE)
+  type   UserType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  credentials       UserCredentials?
+  individualProfile IndividualProfile?
+  legalProfile      LegalProfile?
+
+  refreshTokens RefreshTokens[]
+}
+
+model IndividualProfile {
+  userId Int  @id
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName  String
+  middleName String?
+  lastName   String
+
+  firstNameLat String?
+  lastNameLat  String?
+
+  birthDate DateTime?
+}
+
+model LegalProfile {
+  userId Int  @id
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyName    String
+  companyNameLat String?
+
+  edrpou    String  @unique
+  taxNumber String?
+
+  legalAddress      String
+  contactPersonName String?
+}
+
+model UserCredentials {
+  userId Int  @id
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  passwordHash String?
+
+  twoFactorEnabled Boolean @default(false)
+  twoFactorToken   String?
+
+  googleEmail String?
+  googleId    String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshTokens {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String
+  expiresAt        DateTime
+
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@index([userId, revokedAt])
+}
