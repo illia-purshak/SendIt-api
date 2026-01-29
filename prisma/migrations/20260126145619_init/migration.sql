@@ -15,6 +15,7 @@ CREATE TABLE "User" (
     "role" "UserRole" NOT NULL DEFAULT 'CLIENT',
     "status" "UserStatus" NOT NULL DEFAULT 'INACTIVE',
     "type" "UserType" NOT NULL,
+    "profileCompleted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -35,7 +36,7 @@ CREATE TABLE "IndividualProfile" (
 );
 
 -- CreateTable
-CREATE TABLE "LegalProfile" (
+CREATE TABLE "OrganizationProfile" (
     "userId" INTEGER NOT NULL,
     "companyName" TEXT NOT NULL,
     "companyNameLat" TEXT,
@@ -44,17 +45,13 @@ CREATE TABLE "LegalProfile" (
     "legalAddress" TEXT NOT NULL,
     "contactPersonName" TEXT,
 
-    CONSTRAINT "LegalProfile_pkey" PRIMARY KEY ("userId")
+    CONSTRAINT "OrganizationProfile_pkey" PRIMARY KEY ("userId")
 );
 
 -- CreateTable
 CREATE TABLE "UserCredentials" (
     "userId" INTEGER NOT NULL,
-    "passwordHash" TEXT,
-    "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
-    "twoFactorToken" TEXT,
-    "googleEmail" TEXT,
-    "googleId" TEXT,
+    "passwordHash" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -80,10 +77,7 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX "User_phoneNumber_key" ON "User"("phoneNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "LegalProfile_edrpou_key" ON "LegalProfile"("edrpou");
-
--- CreateIndex
-CREATE UNIQUE INDEX "UserCredentials_googleId_key" ON "UserCredentials"("googleId");
+CREATE UNIQUE INDEX "OrganizationProfile_edrpou_key" ON "OrganizationProfile"("edrpou");
 
 -- CreateIndex
 CREATE INDEX "RefreshTokens_userId_revokedAt_idx" ON "RefreshTokens"("userId", "revokedAt");
@@ -92,7 +86,7 @@ CREATE INDEX "RefreshTokens_userId_revokedAt_idx" ON "RefreshTokens"("userId", "
 ALTER TABLE "IndividualProfile" ADD CONSTRAINT "IndividualProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "LegalProfile" ADD CONSTRAINT "LegalProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "OrganizationProfile" ADD CONSTRAINT "OrganizationProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserCredentials" ADD CONSTRAINT "UserCredentials_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -9,18 +9,19 @@ datasource db {
 }
 
 model User {
-  id                Int                @id @default(autoincrement())
-  email             String?            @unique
-  phoneNumber       String?            @unique
-  role              UserRole           @default(CLIENT)
-  status            UserStatus         @default(INACTIVE)
-  type              UserType
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  individualProfile IndividualProfile?
-  legalProfile      LegalProfile?
-  RefreshTokens     RefreshTokens[]
-  credentials       UserCredentials?
+  id                  Int                  @id @default(autoincrement())
+  email               String?              @unique
+  phoneNumber         String?              @unique
+  role                UserRole             @default(CLIENT)
+  status              UserStatus           @default(INACTIVE)
+  type                UserType
+  profileCompleted    Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  individualProfile   IndividualProfile?
+  organizationProfile OrganizationProfile?
+  RefreshTokens       RefreshTokens[]
+  credentials         UserCredentials?
 }
 
 model IndividualProfile {
@@ -34,7 +35,7 @@ model IndividualProfile {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model LegalProfile {
+model OrganizationProfile {
   userId            Int     @id
   companyName       String
   companyNameLat    String?
@@ -46,15 +47,11 @@ model LegalProfile {
 }
 
 model UserCredentials {
-  userId           Int      @id
-  passwordHash     String?
-  twoFactorEnabled Boolean  @default(false)
-  twoFactorToken   String?
-  googleEmail      String?
-  googleId         String?  @unique
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int      @id
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model RefreshTokens {
