@@ -6,37 +6,49 @@ import {
 import { Request } from "express";
 import { UserRole, UserType } from "src/generated/prisma/enums";
 
-export interface AccessUser {
+export interface AccessUserContext {
   sub: number;
   role: UserRole;
   type: UserType;
 }
 
-export const AccessUser = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): AccessUser => {
+export const AccessUserContext = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): AccessUserContext => {
     const request = ctx.switchToHttp().getRequest<Request>();
-    return request.user as AccessUser;
+    return request.user as AccessUserContext;
   },
 );
 
-export type RefreshContext = Readonly<{
-  sub: number;
+export type RefreshTokenContext = Readonly<{
   tokenId: number;
   refreshToken: string;
 }>;
 
-export const RefreshContext = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): RefreshContext => {
+export const RefreshTokenContext = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): RefreshTokenContext => {
     const req = ctx.switchToHttp().getRequest<Request>();
 
-    const sub = req.user?.sub;
     const tokenId = req.tokenId;
     const refreshToken = req.refreshToken;
 
-    if (!sub || !tokenId || !refreshToken) {
-      throw new UnauthorizedException();
-    }
+    if (!tokenId || !refreshToken)
+      throw new UnauthorizedException("Refresh cookies missing");
 
-    return { sub, tokenId, refreshToken };
+    return { tokenId, refreshToken };
+  },
+);
+
+export type ResetPasswordTokenContext = string;
+
+export const ResetPasswordTokenContext = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): ResetPasswordTokenContext => {
+    const req = ctx.switchToHttp().getRequest<Request>();
+
+    const { resetPasswordToken } = req.cookies;
+
+    if (!resetPasswordToken)
+      throw new UnauthorizedException("Reset password cookies missing");
+
+    return resetPasswordToken;
   },
 );

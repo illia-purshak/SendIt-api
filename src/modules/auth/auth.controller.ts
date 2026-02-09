@@ -2,11 +2,10 @@ import {
   Controller,
   Post,
   Body,
-  Patch,
   Res,
-  Req,
   Get,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import {
@@ -15,43 +14,51 @@ import {
   LoginDto,
   OrganizationProfileDto,
   RegDto,
-  ResetPasswordDto,
+  type ResetPasswordDto,
 } from "./auth.dto.js";
 import type { Response } from "express";
 import { ZodValidationPipe } from "nestjs-zod";
-import { AccessUser, RefreshContext } from "src/common/decorators";
-import { AccessTokenGuard, RefreshTokenGuard } from "./auth.guard";
+import { AccessUserContext, RefreshTokenContext } from "src/common/decorators";
+import {
+  AccessTokenGuard,
+  RefreshTokenGuard,
+  ResetPasswordTokenGuard,
+} from "./auth.guard";
+import { API_ROUTES } from "src/constants/apiRoutes";
 
-@Controller("auth")
+@Controller(API_ROUTES.AUTH.BASE)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @UseGuards(AccessTokenGuard)
-  @Get("me")
-  async me(@AccessUser() user: AccessUser) {
+  @Get(API_ROUTES.AUTH.ME)
+  async me(@AccessUserContext() user: AccessUserContext) {
     return this.authService.me(user);
   }
 
-  @Post("login")
+  @Post(API_ROUTES.AUTH.LOGIN)
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, refreshToken, tokenId } =
-      await this.authService.login(loginDto);
+    const {
+      accessToken,
+      tokenRecord: refreshToken,
+      tokenId,
+    } = await this.authService.login(loginDto);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/auth/refresh",
+      sameSite: "none",
+      path: "/auth",
     });
 
     res.cookie("tokenId", tokenId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/auth/refresh",
+      sameSite: "none",
+      path: "/auth",
     });
 
     return {
@@ -60,15 +67,15 @@ export class AuthController {
     };
   }
 
-  @Post("register")
+  @Post(API_ROUTES.AUTH.REGISTER)
   register(@Body(new ZodValidationPipe(RegDto)) registerDto: RegDto) {
     return this.authService.register(registerDto);
   }
 
   @UseGuards(AccessTokenGuard)
-  @Post("complite-individual-profile")
+  @Post(API_ROUTES.AUTH.COMPLITE_INDIVIDUAL_PROFILE)
   compliteIndividualProfile(
-    @AccessUser() user: AccessUser,
+    @AccessUserContext() user: AccessUserContext,
     @Body(new ZodValidationPipe(IndividualProfileDto))
     dto: IndividualProfileDto,
   ) {
@@ -76,50 +83,50 @@ export class AuthController {
   }
 
   @UseGuards(AccessTokenGuard)
-  @Post("complite-organization-profile")
+  @Post(API_ROUTES.AUTH.COMPLITE_ORGANIZATION_PROFILE)
   compliteOrganizationProfile(
-    @AccessUser() user: AccessUser,
+    @AccessUserContext() user: AccessUserContext,
     @Body(new ZodValidationPipe(OrganizationProfileDto))
     dto: OrganizationProfileDto,
   ) {
     return this.authService.compliteOrganizationProfile(user, dto);
   }
 
-  @Post("forgot-password")
-  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(forgotPasswordDto);
+  @Post(API_ROUTES.AUTH.FORGOT_PASSWORD)
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return await this.authService.forgotPassword(forgotPasswordDto);
   }
 
-  @Patch("reset-password")
-  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-    return this.authService.resetPassword(resetPasswordDto);
+  @Post(API_ROUTES.AUTH.RESET_PASSWORD)
+  resetPassword(
+    @Query("token") token: string,
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ) {
+    const decode = decodeURIComponent(token);
+    return this.authService.resetPassword(decode, resetPasswordDto);
   }
 
   @UseGuards(RefreshTokenGuard)
-  @Post("refresh")
+  @Get(API_ROUTES.AUTH.REFRESH)
   async refreshAccessToken(
-    @RefreshContext() ctx: RefreshContext,
+    @RefreshTokenContext() ctx: RefreshTokenContext,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken, tokenId } =
-      await this.authService.refreshAccessToken(
-        ctx.sub,
-        ctx.refreshToken,
-        ctx.tokenId,
-      );
+      await this.authService.refreshAccessToken(ctx.refreshToken, ctx.tokenId);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/auth/refresh",
+      sameSite: "none",
+      path: "/auth",
     });
 
     res.cookie("tokenId", tokenId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/auth/refresh",
+      sameSite: "none",
+      path: "/auth",
     });
 
     return {

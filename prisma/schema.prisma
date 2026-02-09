@@ -9,19 +9,20 @@ datasource db {
 }
 
 model User {
-  id                  Int                  @id @default(autoincrement())
-  email               String?              @unique
-  phoneNumber         String?              @unique
-  role                UserRole             @default(CLIENT)
-  status              UserStatus           @default(INACTIVE)
+  id                  Int                   @id @default(autoincrement())
+  email               String?               @unique
+  phoneNumber         String?               @unique
+  role                UserRole              @default(CLIENT)
+  status              UserStatus            @default(INACTIVE)
   type                UserType
-  profileCompleted    Boolean              @default(false)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  profileCompleted    Boolean               @default(false)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
   individualProfile   IndividualProfile?
   organizationProfile OrganizationProfile?
   RefreshTokens       RefreshTokens[]
   credentials         UserCredentials?
+  resetPasswordTokens ResetPasswordTokens[]
 }
 
 model IndividualProfile {
@@ -55,15 +56,33 @@ model UserCredentials {
 }
 
 model RefreshTokens {
-  id               Int       @id @default(autoincrement())
-  userId           Int
-  refreshTokenHash String
-  expiresAt        DateTime
-  createdAt        DateTime  @default(now())
-  revokedAt        DateTime?
-  User             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int    @id @default(autoincrement())
+  userId    Int
+  tokenHash String
+
+  revokedAt DateTime?
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
+}
+
+model ResetPasswordTokens {
+  id     Int @id @default(autoincrement())
+  userId Int
+
+  tokenHash       String
+  tokenLookupHash String @unique
+
+  usedAt    DateTime?
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum UserStatus {

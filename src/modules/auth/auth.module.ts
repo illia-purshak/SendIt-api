@@ -11,7 +11,7 @@ import { NodemailerService } from "src/common/nodemail.service";
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? "CHANGE_ME",
       signOptions: {
-        expiresIn: "1h",
+        expiresIn: "15m",
       },
     }),
   ],

@@ -31,5 +31,10 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /usr/src/app/dist ./dist
 # Copy Prisma runtime artifacts built during generate (engines + client).
 COPY --from=build /usr/src/app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=build /usr/src/app/prisma ./prisma
+COPY --from=build /usr/src/app/prisma.config.ts ./prisma.config.ts
 
-CMD ["node", "dist/src/main.js"]
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+CMD ["./entrypoint.sh"]

@@ -1,11 +1,6 @@
 import z from "zod";
-import {
-  JWT_REGEX,
-  PASSWORD_REGEX,
-  PHONE_REGEX,
-} from "../../constants/regex.js";
+import { PASSWORD_REGEX, PHONE_REGEX } from "../../constants/regex.js";
 import { createZodDto } from "nestjs-zod";
-import { UserRole, UserType } from "src/generated/prisma/enums.js";
 
 const PasswordSchema = z
   .string()
@@ -60,10 +55,7 @@ export const ForgotPasswordSchema = z.object({
   email: z.email("Email is not valid"),
 });
 
-export const ResetPasswordSchema = z.object({
-  token: z.jwt().regex(JWT_REGEX, "This reset token is invalid"),
-  password: PasswordSchema,
-});
+export const ResetPasswordSchema = z.object({ password: PasswordSchema });
 
 export class LoginDto extends createZodDto(LoginSchema) {}
 export class RegDto extends createZodDto(RegSchema) {}

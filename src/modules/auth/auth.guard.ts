@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
-import { AccessUser } from "src/common/decorators";
+import { AccessUserContext } from "src/common/decorators";
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
@@ -21,7 +21,8 @@ export class AccessTokenGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<AccessUser>(token);
+      const payload =
+        await this.jwtService.verifyAsync<AccessUserContext>(token);
       request.user = payload;
       return true;
     } catch {
@@ -45,8 +46,6 @@ export class AccessTokenGuard implements CanActivate {
 }
 
 export class RefreshTokenGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
-
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const request = ctx.switchToHttp().getRequest();
 
@@ -61,17 +60,30 @@ export class RefreshTokenGuard implements CanActivate {
       throw new UnauthorizedException("Invalid tokenId cookie");
     }
 
-    let payload: any;
-    try {
-      payload = await this.jwtService.verifyAsync(refreshToken);
-    } catch {
-      throw new UnauthorizedException("Invalid refresh token");
-    }
-    request.user = {
-      sub: payload.sub,
-    };
     request.tokenId = tokenId;
     request.refreshToken = refreshToken;
+
+    return true;
+  }
+}
+
+export class ResetPasswordTokenGuard implements CanActivate {
+  constructor(private jwtService: JwtService) {}
+
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    const request = ctx.switchToHttp().getRequest();
+
+    const { resetPasswordToken } = request.Param ?? {};
+
+    if (!resetPasswordToken)
+      throw new UnauthorizedException("Reset password token missing");
+
+    const isValid = await this.jwtService.verifyAsync(resetPasswordToken);
+
+    if (!isValid)
+      throw new UnauthorizedException(
+        "Invalid or expired reset password token",
+      );
 
     return true;
   }

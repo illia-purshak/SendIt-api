@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
-  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { PrismaService } from "src/prisma.service";
@@ -15,14 +14,20 @@ import {
   ResetPasswordDto,
 } from "./auth.dto";
 import argon2 from "argon2";
-import { createRefreshToken, hashThis } from "src/utils/helper";
+import { createToken, hashThis } from "src/utils/helper";
 
 import { JwtService } from "@nestjs/jwt";
 import { UserRole, UserStatus } from "src/generated/prisma/enums";
 import { Prisma } from "src/generated/prisma/client";
 import { NodemailerService } from "src/common/nodemail.service";
-import { setDeadlineFromNow, WEEK } from "src/constants/time";
-import { AccessUser } from "src/common/decorators";
+import { MINUTE, setDeadlineFromNow, WEEK } from "src/constants/time";
+import {
+  AccessUserContext,
+  ResetPasswordTokenContext,
+} from "src/common/decorators";
+import { createHash } from "crypto";
+
+import { API_ROUTES } from "src/constants/apiRoutes";
 
 @Injectable()
 export class AuthService {
@@ -32,7 +37,7 @@ export class AuthService {
     private nodemailer: NodemailerService,
   ) {}
 
-  async me(user: AccessUser) {
+  async me(user: AccessUserContext) {
     const userData = await this.prisma.user.findFirst({
       where: { id: user.sub },
     });
@@ -89,19 +94,19 @@ export class AuthService {
         },
       });
 
-    const refreshToken = createRefreshToken();
-    const refreshTokenHash = await hashThis(refreshToken);
+    const token = createToken();
+    const tokenHash = await hashThis(token);
 
     await this.prisma.refreshTokens.updateMany({
       where: { userId: user.id },
       data: { revokedAt: new Date() },
     });
 
-    const token = await this.prisma.refreshTokens.create({
+    const tokenRecord = await this.prisma.refreshTokens.create({
       data: {
         userId: user.id,
-        refreshTokenHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        tokenHash,
+        expiresAt: new Date(Date.now() + WEEK),
       },
     });
 
@@ -113,8 +118,8 @@ export class AuthService {
 
     return {
       accessToken,
-      refreshToken,
-      tokenId: token.id,
+      tokenRecord,
+      tokenId: tokenRecord.id,
     };
   }
 
@@ -175,7 +180,10 @@ export class AuthService {
     }
   }
 
-  async compliteIndividualProfile(user: AccessUser, dto: IndividualProfileDto) {
+  async compliteIndividualProfile(
+    user: AccessUserContext,
+    dto: IndividualProfileDto,
+  ) {
     try {
       await this.prisma.$transaction(async (tx) => {
         tx.individualProfile.create({
@@ -206,7 +214,7 @@ export class AuthService {
   }
 
   async compliteOrganizationProfile(
-    user: AccessUser,
+    user: AccessUserContext,
     dto: OrganizationProfileDto,
   ) {
     try {
@@ -232,60 +240,112 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const userExist = await this.prisma.user.findFirstOrThrow({ where: dto });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (!user?.email) return { success: true };
 
-    if (!userExist) {
-      throw new BadRequestException({
-        success: false,
-        error: {
-          code: 404,
-          message: "Can't find user with such email",
-        },
-      });
-    }
+    const token = createToken();
+    const tokenHash = await argon2.hash(token);
+    const tokenLookupHash = String(
+      createHash("sha256").update(token).digest("hex"),
+    );
 
     try {
-      this.jwtService.sign({
-        sub: new Date().getTime(),
-        email: dto.email,
+      await this.prisma.$transaction(async (tx) => {
+        await tx.resetPasswordTokens.updateMany({
+          where: { userId: user.id, usedAt: null },
+          data: { usedAt: new Date() },
+        });
+
+        await tx.resetPasswordTokens.create({
+          data: {
+            userId: user.id,
+            tokenHash,
+            tokenLookupHash,
+            expiresAt: setDeadlineFromNow(MINUTE * 15),
+          },
+        });
       });
-      this.nodemailer.sendMail({
-        from: "SendIt",
-        to: userExist.email!,
-        subject: "Forgot your password?",
-        text: "Click here",
-      });
+
+      const encodedToken = encodeURIComponent(token);
+      const link = `localhost:3000/auth${API_ROUTES.AUTH.RESET_PASSWORD}?token=${encodedToken}`;
+
+      // await this.nodemailer.sendMail({
+      //   from: "SendIt",
+      //   to: user.email,
+      //   subject: "Forgot your password?",
+      //   text: `Click this link to reset your password:
+      //   ${link}`,
+      // });
+
+      console.log(encodedToken);
+
+      return { success: true };
     } catch (err) {
-      throw new InternalServerErrorException({
-        success: false,
-        error: {
-          code: 500,
-          message: "Error occured when while sending email",
-        },
-      });
+      throw new InternalServerErrorException(err.message);
     }
-
-    return {
-      success: true,
-    };
   }
 
-  async resetPassword(dto: ResetPasswordDto) {
-    return dto;
-  }
-
-  async refreshAccessToken(
-    userId: number,
-    refreshToken: string,
-    tokenId: number,
+  async resetPassword(
+    tokenLookup: ResetPasswordTokenContext,
+    dto: ResetPasswordDto,
   ) {
+    const tokenLookupHash = String(
+      createHash("sha256").update(tokenLookup).digest("hex"),
+    );
+
+    const passwordHash = await hashThis(dto.password);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const record = await tx.resetPasswordTokens.findUnique({
+          where: { tokenLookupHash },
+        });
+
+        if (!record || record.usedAt || record.expiresAt < new Date())
+          throw new BadRequestException("Invalid reset password token");
+
+        const ok = await argon2.verify(record?.tokenHash, tokenLookup);
+
+        if (!ok) throw new BadRequestException("Invalid reset password token");
+
+        await tx.resetPasswordTokens.update({
+          where: { id: record.id },
+          data: { usedAt: new Date() },
+        });
+
+        await tx.userCredentials.update({
+          where: { userId: record.userId },
+          data: { passwordHash },
+        });
+
+        await tx.refreshTokens.updateMany({
+          where: { userId: record.userId },
+          data: { revokedAt: new Date() },
+        });
+      });
+      return { success: true };
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+
+      throw new InternalServerErrorException(
+        "An error occurred while changing the password",
+      );
+    }
+  }
+
+  async refreshAccessToken(refreshToken: string, tokenId: number) {
     const token = await this.prisma.refreshTokens.findUnique({
       where: { id: tokenId },
     });
 
-    if (!token || token.userId !== userId) {
+    if (!token) {
       throw new UnauthorizedException();
     }
+
+    const userId = token.userId;
 
     if (token.revokedAt) {
       await this.prisma.refreshTokens.updateMany({
@@ -300,13 +360,13 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const isValid = await argon2.verify(refreshToken, token.refreshTokenHash);
+    const isValid = await argon2.verify(token.tokenHash, refreshToken);
 
     if (!isValid) {
       throw new UnauthorizedException();
     }
 
-    const newRefreshToken = createRefreshToken();
+    const newRefreshToken = createToken();
     const newHash = await hashThis(newRefreshToken);
 
     const newToken = await this.prisma.$transaction(async (tx) => {
@@ -318,7 +378,7 @@ export class AuthService {
       return tx.refreshTokens.create({
         data: {
           userId,
-          refreshTokenHash: newHash,
+          tokenHash: newHash,
           expiresAt: setDeadlineFromNow(WEEK),
         },
       });
