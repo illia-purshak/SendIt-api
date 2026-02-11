@@ -40,6 +40,12 @@ export const OrganizationProfileSchema = z.object({
   contactPersonName: z.string().nullable(),
 });
 
+const BirthDateSchema = z.coerce.date();
+(BirthDateSchema as any)._zod.toJSONSchema = () => ({
+  type: "string",
+  format: "date-time",
+});
+
 export const IndividualProfileSchema = z.object({
   firstName: z.string().min(1),
   middleName: z.string().nullable().optional(),
@@ -48,7 +54,7 @@ export const IndividualProfileSchema = z.object({
   firstNameLat: z.string().nullable().optional(),
   lastNameLat: z.string().nullable().optional(),
 
-  birthDate: z.coerce.date().optional(),
+  birthDate: BirthDateSchema.optional(),
 });
 
 export const ForgotPasswordSchema = z.object({
