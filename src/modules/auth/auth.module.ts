@@ -3,7 +3,9 @@ import { JwtModule } from "@nestjs/jwt";
 import { AuthService } from "./auth.service.js";
 import { AuthController } from "./auth.controller";
 import { PrismaModule } from "../../prisma.module";
-import { NodemailerService } from "src/common/nodemail.service";
+import { MailModule } from "../mail/mail.module.js";
+import { MailService } from "../mail/mail.service.js";
+import { ConfigModule } from "@nestjs/config";
 
 @Module({
   imports: [
@@ -14,8 +16,10 @@ import { NodemailerService } from "src/common/nodemail.service";
         expiresIn: "15m",
       },
     }),
+    MailModule,
+    ConfigModule.forRoot(),
   ],
   controllers: [AuthController],
-  providers: [AuthService, NodemailerService],
+  providers: [AuthService, MailService],
 })
 export class AuthModule {}

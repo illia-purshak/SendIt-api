@@ -19,7 +19,6 @@ import { createToken, hashThis } from "src/utils/helper";
 import { JwtService } from "@nestjs/jwt";
 import { UserRole, UserStatus } from "src/generated/prisma/enums";
 import { Prisma } from "src/generated/prisma/client";
-import { NodemailerService } from "src/common/nodemail.service";
 import { MINUTE, setDeadlineFromNow, WEEK } from "src/constants/time";
 import {
   AccessUserContext,
@@ -28,13 +27,14 @@ import {
 import { createHash } from "crypto";
 
 import { API_ROUTES } from "src/constants/apiRoutes";
+import { MailService } from "../mail/mail.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private nodemailer: NodemailerService,
+    private readonly mailService: MailService,
   ) {}
 
   async me(user: AccessUserContext) {
@@ -269,21 +269,21 @@ export class AuthService {
       });
 
       const encodedToken = encodeURIComponent(token);
-      const link = `localhost:3000/auth${API_ROUTES.AUTH.RESET_PASSWORD}?token=${encodedToken}`;
+      const base = process.env.FRONTEND_URL ?? "http://localhost:3000";
+      const link = `${base}${API_ROUTES.AUTH.RESET_PASSWORD}?token=${encodedToken}`;
 
-      // await this.nodemailer.sendMail({
-      //   from: "SendIt",
-      //   to: user.email,
-      //   subject: "Forgot your password?",
-      //   text: `Click this link to reset your password:
-      //   ${link}`,
-      // });
-
-      console.log(encodedToken);
+      await this.mailService.sendEmail(
+        user.email,
+        "Wanna reset your sendIt password?",
+        "reset-password-email.pug",
+        { name: "noreply-sendIt", resetLink: link },
+      );
 
       return { success: true };
     } catch (err) {
-      throw new InternalServerErrorException(err.message);
+      throw new InternalServerErrorException(
+        "An error occurred while processing password reset",
+      );
     }
   }
 
@@ -305,7 +305,7 @@ export class AuthService {
         if (!record || record.usedAt || record.expiresAt < new Date())
           throw new BadRequestException("Invalid reset password token");
 
-        const ok = await argon2.verify(record?.tokenHash, tokenLookup);
+        const ok = await argon2.verify(record.tokenHash, tokenLookup);
 
         if (!ok) throw new BadRequestException("Invalid reset password token");
 
