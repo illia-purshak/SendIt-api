@@ -1,14 +1,106 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id                  Int                   @id @default(autoincrement())
+  email               String?               @unique
+  phoneNumber         String?               @unique
+  role                UserRole              @default(CLIENT)
+  status              UserStatus            @default(INACTIVE)
+  type                UserType
+  profileCompleted    Boolean               @default(false)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  individualProfile   IndividualProfile?
+  organizationProfile OrganizationProfile?
+  RefreshTokens       RefreshTokens[]
+  credentials         UserCredentials?
+  resetPasswordTokens ResetPasswordTokens[]
+}
+
+model IndividualProfile {
+  userId       Int       @id
+  firstName    String
+  middleName   String?
+  lastName     String
+  firstNameLat String?
+  lastNameLat  String?
+  birthDate    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OrganizationProfile {
+  userId            Int     @id
+  companyName       String
+  companyNameLat    String?
+  edrpou            String  @unique
+  taxNumber         String?
+  legalAddress      String
+  contactPersonName String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserCredentials {
+  userId       Int      @id
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshTokens {
+  id        Int    @id @default(autoincrement())
+  userId    Int
+  tokenHash String
+
+  revokedAt DateTime?
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+}
+
+model ResetPasswordTokens {
+  id     Int @id @default(autoincrement())
+  userId Int
+
+  tokenHash       String
+  tokenLookupHash String @unique
+
+  usedAt    DateTime?
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+  BANNED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  COURIER
+  CLIENT
+}
+
+enum UserType {
+  INDIVIDUAL
+  ORGANIZATION
 }

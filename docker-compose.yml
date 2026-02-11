@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sendit-api
+    container_name: api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    env_file:
+      - .env
+
+  db:
+    image: postgres:16
+    container_name: db
+    ports:
+      - "5433:5432"
+    env_file:
+      - .env
+    # environment:
+    #   POSTGRES_USER: postgres
+    #   POSTGRES_PASSWORD: sobol24918
+    #   POSTGRES_DB: SendIt-db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
