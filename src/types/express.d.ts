@@ -1,10 +1,9 @@
-import { AccessUserType } from "@/auth/types/auth-user.type";
-import { RefreshUserType } from "src/modules/auth/auth.dto";
+import type { AccessUserContext } from "../common/decorators";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: AccessUserType | RefreshUserType;
+      user?: AccessUserContext;
       tokenId?: number;
       refreshToken?: string;
     }

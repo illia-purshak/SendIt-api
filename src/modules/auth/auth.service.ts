@@ -17,13 +17,10 @@ import argon2 from "argon2";
 import { createToken, hashThis } from "src/utils/helper";
 
 import { JwtService } from "@nestjs/jwt";
-import { UserRole, UserStatus } from "src/generated/prisma/enums";
+import { UserRole, UserStatus, UserType } from "src/generated/prisma/enums";
 import { Prisma } from "src/generated/prisma/client";
 import { MINUTE, setDeadlineFromNow, WEEK } from "src/constants/time";
-import {
-  AccessUserContext,
-  ResetPasswordTokenContext,
-} from "src/common/decorators";
+import { AccessUserContext } from "src/common/decorators";
 import { createHash } from "crypto";
 
 import { API_ROUTES } from "src/constants/apiRoutes";
@@ -42,9 +39,14 @@ export class AuthService {
       where: { id: user.sub },
     });
     if (userData?.profileCompleted) {
-      const userDetails = await this.prisma.individualProfile.findFirst({
-        where: { userId: user.sub },
-      });
+      const userDetails =
+        userData.type === UserType.ORGANIZATION
+          ? await this.prisma.organizationProfile.findFirst({
+              where: { userId: user.sub },
+            })
+          : await this.prisma.individualProfile.findFirst({
+              where: { userId: user.sub },
+            });
       return {
         success: true,
         data: [userData, userDetails],
@@ -80,10 +82,7 @@ export class AuthService {
         },
       });
 
-    const passwordValid = await argon2.verify(
-      userCredentials.passwordHash,
-      dto.password,
-    );
+    const passwordValid = await argon2.verify(userCredentials.passwordHash, dto.password);
 
     if (!passwordValid)
       throw new UnauthorizedException({
@@ -94,8 +93,8 @@ export class AuthService {
         },
       });
 
-    const token = createToken();
-    const tokenHash = await hashThis(token);
+    const refreshToken = createToken();
+    const tokenHash = await hashThis(refreshToken);
 
     await this.prisma.refreshTokens.updateMany({
       where: { userId: user.id },
@@ -118,7 +117,7 @@ export class AuthService {
 
     return {
       accessToken,
-      tokenRecord,
+      refreshToken,
       tokenId: tokenRecord.id,
     };
   }
@@ -180,17 +179,14 @@ export class AuthService {
     }
   }
 
-  async compliteIndividualProfile(
-    user: AccessUserContext,
-    dto: IndividualProfileDto,
-  ) {
+  async compliteIndividualProfile(user: AccessUserContext, dto: IndividualProfileDto) {
     try {
       await this.prisma.$transaction(async (tx) => {
-        tx.individualProfile.create({
+        await tx.individualProfile.create({
           data: { userId: user.sub, ...dto },
         });
 
-        tx.user.update({
+        await tx.user.update({
           where: { id: user.sub },
           data: { profileCompleted: true },
         });
@@ -213,13 +209,16 @@ export class AuthService {
     }
   }
 
-  async compliteOrganizationProfile(
-    user: AccessUserContext,
-    dto: OrganizationProfileDto,
-  ) {
+  async compliteOrganizationProfile(user: AccessUserContext, dto: OrganizationProfileDto) {
     try {
-      await this.prisma.organizationProfile.create({
-        data: { userId: user.sub, ...dto },
+      await this.prisma.$transaction(async (tx) => {
+        await tx.organizationProfile.create({
+          data: { userId: user.sub, ...dto },
+        });
+        await tx.user.update({
+          where: { id: user.sub },
+          data: { profileCompleted: true },
+        });
       });
       return { success: true };
     } catch (err) {
@@ -247,9 +246,7 @@ export class AuthService {
 
     const token = createToken();
     const tokenHash = await argon2.hash(token);
-    const tokenLookupHash = String(
-      createHash("sha256").update(token).digest("hex"),
-    );
+    const tokenLookupHash = String(createHash("sha256").update(token).digest("hex"));
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -280,20 +277,13 @@ export class AuthService {
       );
 
       return { success: true };
-    } catch (err) {
-      throw new InternalServerErrorException(
-        "An error occurred while processing password reset",
-      );
+    } catch {
+      throw new InternalServerErrorException("An error occurred while processing password reset");
     }
   }
 
-  async resetPassword(
-    tokenLookup: ResetPasswordTokenContext,
-    dto: ResetPasswordDto,
-  ) {
-    const tokenLookupHash = String(
-      createHash("sha256").update(tokenLookup).digest("hex"),
-    );
+  async resetPassword(tokenLookup: string, dto: ResetPasswordDto) {
+    const tokenLookupHash = String(createHash("sha256").update(tokenLookup).digest("hex"));
 
     const passwordHash = await hashThis(dto.password);
     try {
@@ -330,9 +320,7 @@ export class AuthService {
         throw err;
       }
 
-      throw new InternalServerErrorException(
-        "An error occurred while changing the password",
-      );
+      throw new InternalServerErrorException("An error occurred while changing the password");
     }
   }
 
@@ -366,6 +354,15 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, type: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
     const newRefreshToken = createToken();
     const newHash = await hashThis(newRefreshToken);
 
@@ -385,7 +382,9 @@ export class AuthService {
     });
 
     const accessToken = this.jwtService.sign({
-      sub: userId,
+      sub: user.id,
+      role: user.role,
+      type: user.type,
     });
 
     return {

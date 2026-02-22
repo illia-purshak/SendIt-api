@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   Body,
@@ -19,11 +20,7 @@ import {
 import type { Response } from "express";
 import { ZodValidationPipe } from "nestjs-zod";
 import { AccessUserContext, RefreshTokenContext } from "src/common/decorators";
-import {
-  AccessTokenGuard,
-  RefreshTokenGuard,
-  ResetPasswordTokenGuard,
-} from "./auth.guard";
+import { AccessTokenGuard, RefreshTokenGuard } from "./auth.guard";
 import { API_ROUTES } from "src/constants/apiRoutes";
 
 @Controller(API_ROUTES.AUTH.BASE)
@@ -37,15 +34,8 @@ export class AuthController {
   }
 
   @Post(API_ROUTES.AUTH.LOGIN)
-  async login(
-    @Body() loginDto: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const {
-      accessToken,
-      tokenRecord: refreshToken,
-      tokenId,
-    } = await this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const { accessToken, refreshToken, tokenId } = await this.authService.login(loginDto);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -98,12 +88,19 @@ export class AuthController {
   }
 
   @Post(API_ROUTES.AUTH.RESET_PASSWORD)
-  resetPassword(
-    @Query("token") token: string,
-    @Body() resetPasswordDto: ResetPasswordDto,
-  ) {
-    const decode = decodeURIComponent(token);
-    return this.authService.resetPassword(decode, resetPasswordDto);
+  resetPassword(@Query("token") token: string, @Body() resetPasswordDto: ResetPasswordDto) {
+    if (!token) {
+      throw new BadRequestException("Reset password token missing");
+    }
+
+    let decodedToken: string;
+    try {
+      decodedToken = decodeURIComponent(token);
+    } catch {
+      throw new BadRequestException("Invalid reset password token");
+    }
+
+    return this.authService.resetPassword(decodedToken, resetPasswordDto);
   }
 
   @UseGuards(RefreshTokenGuard)
@@ -112,8 +109,10 @@ export class AuthController {
     @RefreshTokenContext() ctx: RefreshTokenContext,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, refreshToken, tokenId } =
-      await this.authService.refreshAccessToken(ctx.refreshToken, ctx.tokenId);
+    const { accessToken, refreshToken, tokenId } = await this.authService.refreshAccessToken(
+      ctx.refreshToken,
+      ctx.tokenId,
+    );
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
