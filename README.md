@@ -1,42 +1,40 @@
-Usage
+SendIt API
 
-$ prisma migrate [command] [options]
+Backend API for the SendIt application, built with NestJS, Prisma, and PostgreSQL.
 
-Commands for development
+Useful commands
 
-         dev   Create a migration from changes in Prisma schema, apply it to the database
-               trigger generators (e.g. Prisma Client)
-       reset   Reset your database and apply all migrations, all data will be lost
+1. Install dependencies
+   `pnpm install`
+2. Start API in dev mode (watch)
+   `pnpm start:dev`
+3. Build for production
+   `pnpm build`
+4. Run production build
+   `pnpm start:prod`
+5. Lint
+   `pnpm lint`
+6. Tests
+   `pnpm test`
 
-Commands for production/staging
+Database and Prisma
 
-      deploy   Apply pending migrations to the database
-      status   Check the status of your database migrations
-     resolve   Resolve issues with database migrations, i.e. baseline, failed migration, hotfix
+1. Run only the database with Docker
+   `docker compose up -d db`
+2. Create and apply migrations in development
+   `pnpm exec prisma migrate dev`
+3. Apply migrations in production/staging
+   `pnpm exec prisma migrate deploy`
+4. Check migration status
+   `pnpm exec prisma migrate status`
+5. Reset database (destructive)
+   `pnpm exec prisma migrate reset`
 
-Command for any stage
+DB URL selection
 
-        diff   Compare the database schema from two arbitrary sources
+Set these in `.env` to switch between local and Docker DB URLs.
 
-Options
-
--h, --help Display this help message
---config Custom path to your Prisma config file
---schema Custom path to your Prisma schema
-
-Examples
-
-Create a migration from changes in Prisma schema, apply it to the database, trigger generators (e.g. Prisma Client)
-$ prisma migrate dev
-
-Reset your database and apply all migrations
-$ prisma migrate reset
-
-Apply pending migrations to the database in production/staging
-$ prisma migrate deploy
-
-Check the status of migrations in the production/staging database
-$ prisma migrate status
-
-Specify a schema
-$ prisma migrate status --schema=./schema.prisma
+1. `DB_URL_MODE=auto` uses `DATABASE_URL_DOCKER` when running inside a container, otherwise `DATABASE_URL_LOCAL`
+2. `DB_URL_MODE=docker` forces `DATABASE_URL_DOCKER`
+3. `DB_URL_MODE=local` forces `DATABASE_URL_LOCAL`
+4. `DATABASE_URL` is a fallback if the others are not set
