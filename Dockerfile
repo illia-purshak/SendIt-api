@@ -14,7 +14,9 @@ RUN pnpm install --frozen-lockfile --prod=false
 
 COPY . .
 
-RUN pnpm exec prisma generate
+ARG DATABASE_URL
+RUN DATABASE_URL="$DATABASE_URL" pnpm exec prisma generate
+
 RUN pnpm run build
 
 
