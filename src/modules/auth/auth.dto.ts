@@ -5,23 +5,17 @@ import { createZodDto } from "nestjs-zod";
 const PasswordSchema = z
   .string()
   .min(6, "Password has to more than 6 characters long")
-  .regex(
-    PASSWORD_REGEX,
-    "Password must include only uppercase, lowercase and number",
-  );
+  .regex(PASSWORD_REGEX, "Password must include only uppercase, lowercase and number");
 
 export const LoginSchema = z.object({
-  email: z.email("Email is not valid"),
+  email: z.string().email("Email is not valid"),
   password: PasswordSchema,
 });
 
 export const RegSchema = z
   .object({
-    email: z.email("Email is not valid").optional(),
-    phone: z
-      .string()
-      .regex(PHONE_REGEX, "Phone number is not valid")
-      .optional(),
+    email: z.string().email("Email is not valid").optional(),
+    phone: z.string().regex(PHONE_REGEX, "Phone number is not valid").optional(),
     type: z.enum(["INDIVIDUAL", "ORGANIZATION"]),
     password: PasswordSchema,
   })
@@ -31,7 +25,7 @@ export const RegSchema = z
 
 export const OrganizationProfileSchema = z.object({
   companyName: z.string(),
-  comanyNameLat: z.string().nullable(),
+  companyNameLat: z.string().nullable(),
 
   edrpou: z.string(),
   taxNumber: z.string().nullable(),
@@ -41,7 +35,13 @@ export const OrganizationProfileSchema = z.object({
 });
 
 const BirthDateSchema = z.coerce.date();
-(BirthDateSchema as any)._zod.toJSONSchema = () => ({
+type ZodSchemaWithJsonSchema = typeof BirthDateSchema & {
+  _zod: {
+    toJSONSchema: () => { type: string; format: string };
+  };
+};
+
+(BirthDateSchema as unknown as ZodSchemaWithJsonSchema)._zod.toJSONSchema = () => ({
   type: "string",
   format: "date-time",
 });
@@ -58,18 +58,14 @@ export const IndividualProfileSchema = z.object({
 });
 
 export const ForgotPasswordSchema = z.object({
-  email: z.email("Email is not valid"),
+  email: z.string().email("Email is not valid"),
 });
 
 export const ResetPasswordSchema = z.object({ password: PasswordSchema });
 
 export class LoginDto extends createZodDto(LoginSchema) {}
 export class RegDto extends createZodDto(RegSchema) {}
-export class OrganizationProfileDto extends createZodDto(
-  OrganizationProfileSchema,
-) {}
-export class IndividualProfileDto extends createZodDto(
-  IndividualProfileSchema,
-) {}
+export class OrganizationProfileDto extends createZodDto(OrganizationProfileSchema) {}
+export class IndividualProfileDto extends createZodDto(IndividualProfileSchema) {}
 export class ForgotPasswordDto extends createZodDto(ForgotPasswordSchema) {}
 export class ResetPasswordDto extends createZodDto(ResetPasswordSchema) {}

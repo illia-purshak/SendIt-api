@@ -2,6 +2,44 @@
 // npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
+import { existsSync } from "node:fs";
+
+const normalizeMode = (value: string | undefined): string => {
+  const mode = (value ?? "auto").trim().toLowerCase();
+  return mode.length === 0 ? "auto" : mode;
+};
+
+const isRunningInDocker = (): boolean => {
+  try {
+    return existsSync("/.dockerenv");
+  } catch {
+    return false;
+  }
+};
+
+const resolveDatabaseUrl = (): string => {
+  const mode = normalizeMode(process.env.DB_URL_MODE);
+  const dockerUrl = process.env.DATABASE_URL_DOCKER;
+  const localUrl = process.env.DATABASE_URL_LOCAL;
+  const defaultUrl = process.env.DATABASE_URL;
+
+  let resolved: string | undefined;
+  if (mode === "docker") {
+    resolved = dockerUrl ?? defaultUrl;
+  } else if (mode === "local") {
+    resolved = localUrl ?? defaultUrl;
+  } else {
+    resolved = isRunningInDocker() ? (dockerUrl ?? defaultUrl) : (localUrl ?? defaultUrl);
+  }
+
+  if (!resolved) {
+    throw new Error(
+      "Database URL is not configured. Set DATABASE_URL or use DATABASE_URL_DOCKER/DATABASE_URL_LOCAL with DB_URL_MODE.",
+    );
+  }
+
+  return resolved;
+};
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -9,6 +47,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: resolveDatabaseUrl(),
   },
 });

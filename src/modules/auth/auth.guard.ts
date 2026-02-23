@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { AccessUserContext } from "src/common/decorators";
@@ -21,8 +16,7 @@ export class AccessTokenGuard implements CanActivate {
     }
 
     try {
-      const payload =
-        await this.jwtService.verifyAsync<AccessUserContext>(token);
+      const payload = await this.jwtService.verifyAsync<AccessUserContext>(token);
       request.user = payload;
       return true;
     } catch {
@@ -45,6 +39,7 @@ export class AccessTokenGuard implements CanActivate {
   }
 }
 
+@Injectable()
 export class RefreshTokenGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const request = ctx.switchToHttp().getRequest();
@@ -67,23 +62,16 @@ export class RefreshTokenGuard implements CanActivate {
   }
 }
 
+@Injectable()
 export class ResetPasswordTokenGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
-
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const request = ctx.switchToHttp().getRequest();
 
-    const { resetPasswordToken } = request.Param ?? {};
+    const token = request.query?.token;
 
-    if (!resetPasswordToken)
+    if (!token || typeof token !== "string") {
       throw new UnauthorizedException("Reset password token missing");
-
-    const isValid = await this.jwtService.verifyAsync(resetPasswordToken);
-
-    if (!isValid)
-      throw new UnauthorizedException(
-        "Invalid or expired reset password token",
-      );
+    }
 
     return true;
   }

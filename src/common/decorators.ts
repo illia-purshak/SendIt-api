@@ -1,8 +1,4 @@
-import {
-  createParamDecorator,
-  ExecutionContext,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { createParamDecorator, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { Request } from "express";
 import { UserRole, UserType } from "src/generated/prisma/enums";
 
@@ -31,24 +27,8 @@ export const RefreshTokenContext = createParamDecorator(
     const tokenId = req.tokenId;
     const refreshToken = req.refreshToken;
 
-    if (!tokenId || !refreshToken)
-      throw new UnauthorizedException("Refresh cookies missing");
+    if (!tokenId || !refreshToken) throw new UnauthorizedException("Refresh cookies missing");
 
     return { tokenId, refreshToken };
-  },
-);
-
-export type ResetPasswordTokenContext = string;
-
-export const ResetPasswordTokenContext = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): ResetPasswordTokenContext => {
-    const req = ctx.switchToHttp().getRequest<Request>();
-
-    const { resetPasswordToken } = req.cookies;
-
-    if (!resetPasswordToken)
-      throw new UnauthorizedException("Reset password cookies missing");
-
-    return resetPasswordToken;
   },
 );
