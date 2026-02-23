@@ -26,7 +26,7 @@ RUN apk add --no-cache libc6-compat
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY --from=build /usr/src/app/dist ./dist
 # Copy Prisma runtime artifacts built during generate (engines + client).
