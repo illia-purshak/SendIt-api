@@ -28,3 +28,5 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/sendit-api:latest
+          build-args: |
+            DATABASE_URL=${{ secrets.PRISMA_BUILD_DB_URL }}
