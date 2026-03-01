@@ -1,10 +1,10 @@
 import argon2 from "argon2";
 import { JwtService } from "@nestjs/jwt";
 import { AuthService } from "./auth.service";
-import { PrismaService } from "../../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { MailService } from "../mail/mail.service";
-import { UserRole, UserType } from "../../generated/prisma/enums";
 import * as helper from "../../utils/helper";
+import { UserRole, UserType } from "src/generated/prisma";
 
 describe("AuthService", () => {
   beforeEach(() => {
