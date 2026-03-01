@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { PrismaService } from "src/prisma.service";
+import { PrismaService } from "src/modules/prisma/prisma.service";
 import {
   ForgotPasswordDto,
   IndividualProfileDto,
@@ -17,8 +17,7 @@ import argon2 from "argon2";
 import { createToken, hashThis } from "src/utils/helper";
 
 import { JwtService } from "@nestjs/jwt";
-import { UserRole, UserStatus, UserType } from "src/generated/prisma/enums";
-import { Prisma } from "src/generated/prisma/client";
+import { Prisma, UserRole, UserStatus, UserType } from "src/generated/prisma/client";
 import { MINUTE, setDeadlineFromNow, WEEK } from "src/constants/time";
 import { AccessUserContext } from "src/common/decorators";
 import { createHash } from "crypto";

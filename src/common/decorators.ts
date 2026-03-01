@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { Request } from "express";
-import { UserRole, UserType } from "src/generated/prisma/enums";
+import { UserRole, UserType } from "src/generated/prisma";
 
 export interface AccessUserContext {
   sub: number;
