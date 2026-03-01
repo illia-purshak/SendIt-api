@@ -3,17 +3,8 @@ import { AuthModule } from "./modules/auth/auth.module.js";
 import { PrismaModule } from "./modules/prisma/prisma.module.js";
 import { MailModule } from "./modules/mail/mail.module";
 import { ConfigModule } from "@nestjs/config";
-import { ParcelsModule } from "./modules/parcels/parcels.module";
-import { ParclesModule } from "./modules/parcles/parcles.module";
 
 @Module({
-  imports: [
-    PrismaModule,
-    AuthModule,
-    MailModule,
-    ConfigModule.forRoot(),
-    ParcelsModule,
-    ParclesModule,
-  ],
+  imports: [PrismaModule, AuthModule, MailModule, ConfigModule.forRoot()],
 })
 export class AppModule {}
