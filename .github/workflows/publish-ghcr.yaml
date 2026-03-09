@@ -28,34 +28,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/sendit-api
-          tags: |
-            type=sha
-            type=ref,event=branch
-
-      - name: Set extra tag for dev
-        id: extra_tag
+      - name: Build tag
+        id: build_tag
         run: |
-          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
-            echo "tag=ghcr.io/${{ github.repository_owner }}/sendit-api:dev" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=" >> "$GITHUB_OUTPUT"
-          fi
+          DATE="$(date -u +%F)"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "tag=${DATE}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: docker/Dockerfile
           push: ${{ github.event_name == 'push' }}
           tags: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.extra_tag.outputs.tag }}
-          build-args: |
-            DATABASE_URL=${{ secrets.PRISMA_BUILD_DB_URL }}
+            ghcr.io/${{ github.repository_owner }}/sendit-api:${{ steps.build_tag.outputs.tag }}
 
       - name: Deploy (dev)
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
