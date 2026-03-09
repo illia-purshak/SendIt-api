@@ -29,12 +29,3 @@ Database and Prisma
    `pnpm exec prisma migrate status`
 5. Reset database (destructive)
    `pnpm exec prisma migrate reset`
-
-DB URL selection
-
-Set these in `.env` to switch between local and Docker DB URLs.
-
-1. `DB_URL_MODE=auto` uses `DATABASE_URL_DOCKER` when running inside a container, otherwise `DATABASE_URL_LOCAL`
-2. `DB_URL_MODE=docker` forces `DATABASE_URL_DOCKER`
-3. `DB_URL_MODE=local` forces `DATABASE_URL_LOCAL`
-4. `DATABASE_URL` is a fallback if the others are not set

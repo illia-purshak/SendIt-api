@@ -55,9 +55,6 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
       lint-staged:
         specifier: ^16.2.7
         version: 16.2.7

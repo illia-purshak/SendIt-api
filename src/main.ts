@@ -8,6 +8,11 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const frontendOrigins = (process.env.FRONTEND_URLS ?? process.env.FRONTEND_URL ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
   const config = new DocumentBuilder()
     .setTitle("SendIt-api")
     .setDescription("This is api documentation for SendIt project")
@@ -21,9 +26,10 @@ async function bootstrap() {
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new ZodValidationFilter());
   app.enableCors({
-    origin: process.env.FRONTEND_URL,
+    origin: frontendOrigins.length > 0 ? frontendOrigins : undefined,
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000);
+  const port = Number(process.env.PORT ?? 8000);
+  await app.listen(port, "0.0.0.0");
 }
 void bootstrap();
