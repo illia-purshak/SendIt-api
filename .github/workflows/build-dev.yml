@@ -1,25 +1,17 @@
-name: Build and publish (dev)
+name: Deploy (dev)
 
 on:
   workflow_run:
-    workflows:
-      - CI Docker build
-    types:
-      - completed
-    branches:
-      - dev
-
-permissions:
-  contents: read
+    workflows: ["CI Docker build"]
+    types: [completed]
+    branches: [dev]
 
 jobs:
-  build_and_publish:
+  deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
 
     steps:
-      - uses: actions/checkout@v4
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,31 +19,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build tag
-        id: build_tag
+      - name: Login to ECR
         run: |
-          DATE=$(date -u +%F)
-          SHORT_SHA=${GITHUB_SHA::7}
-          echo "tag=$DATE-$SHORT_SHA" >> $GITHUB_OUTPUT
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+          | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-      - name: Build and push image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ steps.build_tag.outputs.tag }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:dev
-
-      - name: Deploy on self-hosted runner (dev)
+      - name: Pull and restart container
         run: |
           cd /var/www/sendit
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} |
-            docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
           docker compose pull
           docker compose up -d
