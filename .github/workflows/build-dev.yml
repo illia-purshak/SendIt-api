@@ -15,7 +15,7 @@ permissions:
 jobs:
   build_and_publish:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v4
@@ -48,15 +48,10 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ steps.build_tag.outputs.tag }}
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:dev
 
-      - name: Deploy to EC2 (dev)
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ubuntu
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            cd /var/www/sendit
-            aws ecr get-login-password --region eu-north-1 |
-              docker login --username AWS --password-stdin 24723.dkr.ecr.eu-north-1.amazonaws.com
-            docker compose pull
-            docker compose up -d
+      - name: Deploy on self-hosted runner (dev)
+        run: |
+          cd /var/www/sendit
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} |
+            docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+          docker compose pull
+          docker compose up -d
