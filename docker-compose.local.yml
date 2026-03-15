@@ -1,6 +1,5 @@
 services:
   api:
-    image: sendit-api:local
     build:
       context: .
       dockerfile: docker/Dockerfile
