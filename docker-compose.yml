@@ -1,6 +1,5 @@
 services:
   api:
-    image: ${API_IMAGE}
     build:
       context: .
       dockerfile: docker/Dockerfile
