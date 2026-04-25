@@ -10,8 +10,11 @@ exports.AuthModule = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const auth_service_js_1 = require("./auth.service.js");
-const auth_controller_js_1 = require("./auth.controller.js");
-const prisma_module_js_1 = require("../../prisma.module.js");
+const auth_controller_1 = require("./auth.controller");
+const prisma_module_js_1 = require("../prisma/prisma.module.js");
+const mail_module_js_1 = require("../mail/mail.module.js");
+const mail_service_js_1 = require("../mail/mail.service.js");
+const config_1 = require("@nestjs/config");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -21,11 +24,15 @@ exports.AuthModule = AuthModule = __decorate([
             prisma_module_js_1.PrismaModule,
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_SECRET ?? "CHANGE_ME",
-                signOptions: { expiresIn: "15m" },
+                signOptions: {
+                    expiresIn: "15m",
+                },
             }),
+            mail_module_js_1.MailModule,
+            config_1.ConfigModule.forRoot(),
         ],
-        controllers: [auth_controller_js_1.AuthController],
-        providers: [auth_service_js_1.AuthService],
+        controllers: [auth_controller_1.AuthController],
+        providers: [auth_service_js_1.AuthService, mail_service_js_1.MailService],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

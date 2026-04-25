@@ -60,74 +60,79 @@ model UserCredentials {
 }
 
 model RefreshTokens {
-  id        Int    @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
   tokenHash String
-
   revokedAt DateTime?
   expiresAt DateTime
-
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
 }
 
 model ResetPasswordTokens {
-  id     Int @id @default(autoincrement())
-  userId Int
-
+  id              Int       @id @default(autoincrement())
+  userId          Int
   tokenHash       String
-  tokenLookupHash String @unique
-
-  usedAt    DateTime?
-  expiresAt DateTime
-
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  DELETED
-  BANNED
-}
-
-enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  OPERATOR
-  COURIER
-  CLIENT
-}
-
-enum UserType {
-  INDIVIDUAL
-  ORGANIZATION
+  tokenLookupHash String    @unique
+  usedAt          DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Parcel {
   id         Int @id @default(autoincrement())
   shipmentId Int
 
-  weight Decimal
-  height Decimal
-  width  Decimal
-  length Decimal
+  weight        Decimal @db.Decimal(10, 2)
+  height        Decimal @db.Decimal(10, 2)
+  width         Decimal @db.Decimal(10, 2)
+  length        Decimal @db.Decimal(10, 2)
+  declaredValue Decimal @db.Decimal(10, 2) @map("declared_value")
 
-  declared_value Decimal
+  description String?
 
-  type ParcelType
+  type   ParcelType
+  status ParcelStatus @default(PENDING)
 
-  origin_address      String
-  destination_address String
+  originAddress      String @map("origin_address")
+  destinationAddress String @map("destination_address")
 
-  updated_at   DateTime      @updatedAt()
-  created_at   DateTime      @default(now())
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
   shipment     Shipment      @relation(fields: [shipmentId], references: [id])
+  parcelRoutes ParcelRoute[]
+
+  @@index([shipmentId])
+  @@index([status])
+}
+
+model Warehouse {
+  id      Int            @id @default(autoincrement())
+  name    String
+  address String
+  city    String
+  country String         @default("Ukraine")
+  status  LocationStatus @default(ACTIVE)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  parcelRoutes ParcelRoute[]
+}
+
+model Branch {
+  id      Int            @id @default(autoincrement())
+  name    String
+  address String
+  city    String
+  country String         @default("Ukraine")
+  phone   String?
+  status  LocationStatus @default(ACTIVE)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   parcelRoutes ParcelRoute[]
 }
 
@@ -171,24 +176,29 @@ model ParcelRoute {
   id       Int @id @default(autoincrement())
   parcelId Int
 
-  sequence   Int // порядок у маршруті (1,2,3...)
-  arrivedAt  DateTime? // коли прибуло в точку
-  departedAt DateTime? // коли вибуло з точки
+  sequence   Int
+  arrivedAt  DateTime?
+  departedAt DateTime?
 
   status RouteStatus @default(PENDING)
 
-  // warehouseId Int
-  // warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  warehouseId Int?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 
-  // branchId Int
-  // branch   Branch @relation(fields: [branchId], references: [id])
+  branchId Int?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  notes String?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parcel Parcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
 
   @@index([parcelId])
   @@index([sequence])
+  @@index([warehouseId])
+  @@index([branchId])
 }
 
 model ShipmentStatusHistory {
@@ -210,19 +220,53 @@ model ShipmentStatusHistory {
   @@index([status])
 }
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+  BANNED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  COURIER
+  CLIENT
+}
+
+enum UserType {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
 enum ShipmentStatus {
   PENDING
   SHIPPING
   ARRIVED
   DELIVERED
   CANCELED
-  RETEURNED
+  RETURNED
 }
 
 enum ParcelType {
   DOCUMENT
   PACKAGE
   BOX
+}
+
+enum ParcelStatus {
+  PENDING
+  IN_TRANSIT
+  ARRIVED
+  DELIVERED
+  RETURNED
+  LOST
+}
+
+enum LocationStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum PaymentStatus {

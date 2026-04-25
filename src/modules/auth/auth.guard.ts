@@ -1,11 +1,21 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
-import { AccessUserContext } from "src/common/decorators";
+import { AccessUserContext, SKIP_PROFILE_CHECK_KEY } from "src/common/decorators";
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -15,13 +25,25 @@ export class AccessTokenGuard implements CanActivate {
       throw new UnauthorizedException("Access token missing");
     }
 
+    let payload: AccessUserContext;
     try {
-      const payload = await this.jwtService.verifyAsync<AccessUserContext>(token);
+      payload = await this.jwtService.verifyAsync<AccessUserContext>(token);
       request.user = payload;
-      return true;
     } catch {
       throw new UnauthorizedException("Invalid or expired access token");
     }
+
+    if (!payload.profileCompleted) {
+      const skip = this.reflector.getAllAndOverride<boolean>(SKIP_PROFILE_CHECK_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (!skip) {
+        throw new ForbiddenException("Profile not completed");
+      }
+    }
+
+    return true;
   }
 
   extractToken(request: Request) {

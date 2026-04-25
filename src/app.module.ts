@@ -6,7 +6,12 @@ import { ConfigModule } from "@nestjs/config";
 import { PingController } from "./ping.controller";
 
 @Module({
-  imports: [PrismaModule, AuthModule, MailModule, ConfigModule.forRoot()],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    MailModule,
+    ConfigModule.forRoot({ envFilePath: [".env.local", ".env"] }),
+  ],
   controllers: [PingController],
 })
 export class AppModule {}

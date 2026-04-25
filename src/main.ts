@@ -1,3 +1,7 @@
+import { config } from "dotenv";
+config({ path: ".env" });
+config({ path: ".env.local", override: true });
+
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { ZodValidationPipe } from "nestjs-zod";

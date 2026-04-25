@@ -17,6 +17,10 @@ Useful commands
 6. Tests
    `pnpm test`
 
+Remote DB access (EC2)
+
+See [docs/pg-tunnel.md](docs/pg-tunnel.md) for the full guide on connecting PGAdmin to the production database via SSH tunnel without exposing PostgreSQL to the internet.
+
 Database and Prisma
 
 1. Run only the database with Docker
