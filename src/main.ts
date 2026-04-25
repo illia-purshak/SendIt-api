@@ -1,3 +1,4 @@
+import "./bootstrap-env.js"; // must be first import — evaluated before app.module.ts, before any provider reads process.env
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { ZodValidationPipe } from "nestjs-zod";

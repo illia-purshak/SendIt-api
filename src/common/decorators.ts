@@ -1,4 +1,9 @@
-import { createParamDecorator, ExecutionContext, UnauthorizedException } from "@nestjs/common";
+import {
+  createParamDecorator,
+  ExecutionContext,
+  SetMetadata,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { Request } from "express";
 import { UserRole, UserType } from "src/generated/prisma";
 
@@ -6,7 +11,11 @@ export interface AccessUserContext {
   sub: number;
   role: UserRole;
   type: UserType;
+  profileCompleted: boolean;
 }
+
+export const SKIP_PROFILE_CHECK_KEY = "skipProfileCheck";
+export const SkipProfileCheck = () => SetMetadata(SKIP_PROFILE_CHECK_KEY, true);
 
 export const AccessUserContext = createParamDecorator(
   (_: unknown, ctx: ExecutionContext): AccessUserContext => {

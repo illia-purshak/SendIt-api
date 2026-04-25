@@ -19,7 +19,7 @@ import {
 } from "./auth.dto.js";
 import type { Response } from "express";
 import { ZodValidationPipe } from "nestjs-zod";
-import { AccessUserContext, RefreshTokenContext } from "src/common/decorators";
+import { AccessUserContext, RefreshTokenContext, SkipProfileCheck } from "src/common/decorators";
 import { AccessTokenGuard, RefreshTokenGuard } from "./auth.guard";
 import { API_ROUTES } from "src/constants/apiRoutes";
 
@@ -27,6 +27,7 @@ import { API_ROUTES } from "src/constants/apiRoutes";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @SkipProfileCheck()
   @UseGuards(AccessTokenGuard)
   @Get(API_ROUTES.AUTH.ME)
   async me(@AccessUserContext() user: AccessUserContext) {
@@ -62,6 +63,7 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
+  @SkipProfileCheck()
   @UseGuards(AccessTokenGuard)
   @Post(API_ROUTES.AUTH.COMPLITE_INDIVIDUAL_PROFILE)
   compliteIndividualProfile(
@@ -72,6 +74,7 @@ export class AuthController {
     return this.authService.compliteIndividualProfile(user, dto);
   }
 
+  @SkipProfileCheck()
   @UseGuards(AccessTokenGuard)
   @Post(API_ROUTES.AUTH.COMPLITE_ORGANIZATION_PROFILE)
   compliteOrganizationProfile(

@@ -112,6 +112,7 @@ export class AuthService {
       sub: user.id,
       role: user.role,
       type: user.type,
+      profileCompleted: user.profileCompleted,
     });
 
     return {
@@ -355,7 +356,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, type: true },
+      select: { id: true, role: true, type: true, profileCompleted: true },
     });
 
     if (!user) {
@@ -384,6 +385,7 @@ export class AuthService {
       sub: user.id,
       role: user.role,
       type: user.type,
+      profileCompleted: user.profileCompleted,
     });
 
     return {
