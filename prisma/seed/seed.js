@@ -14,8 +14,8 @@ async function main() {
   });
 
   const prisma = new PrismaClient({ adapter });
-  const email = "anex@email.com";
-  const password = "tyQb8JbeBbQL!a";
+  const email = "send.it@gmail.com";
+  const password = "NotGeneratedPass";
   const passwordHash = await argon2.default.hash(password);
 
   try {
